@@ -15,6 +15,7 @@ library(maptools)
 library(mapproj)
 library(ggthemes)
 library(devtools)
+library(dplyr)
 
 #setpath for directory where data is there and file will be generated
 setwd("E:/VDR Analaysis/In Progress/San Diego Bridge VDR/Data")
@@ -144,14 +145,12 @@ etldistinct=sqldf('Select distinct V6 from Mytable')
 
 ETL<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
 Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
-positive<-ETL$class>=1
-ggplot(data=Mytable,aes(Time_,ETL$class,fill=positive))+ 
-  geom_line(aes(colour=positive))+ggtitle(paste("ETL vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+
-  scale_y_continuous("Engine Telegraph",limits=c(-5,5), breaks=c(5,	4,	3,	2,	1,	0,	-1,	-2,	-3,	-4,	-5),labels=c("AH-NF",	"AH-F",	"AH-H",	"AH-S",	"AH-DS",	"STOP",	"AS-DS",	"AS-S",	"AS-H",	"AS-F",	"AS-EF"))+ geom_hline(yintercept=0)+ theme(legend.position="none")
+positive<-ETL$class>=0
 
-ggplot(data=Mytable,aes(Time_,ETL$class, fill=positive))+geom_bar(stat='identity', position = 'identity')+ 
-  scale_fill_manual(values=c("blue", " magenta"))+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0),legend.position='none')+ggtitle(paste("ETL vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Engine Telegr", limits=c(-5,5), breaks=seq(-5,5, by = 1))+geom_hline(yintercept=0)
-
+ETL$series <- ifelse(ETL$class < 0, "Negative", "Positive")
+ggplot(ETL, aes(x = Time_, y = ETL$class, colour = series)) + 
+  geom_line() +
+  scale_colour_manual(values=c("BLUE", "Magenta"))+scale_y_continuous("Engine Telegraph",limits=c(-5,5), breaks=c(5,	4,	3,	2,	1,	0,	-1,	-2,	-3,	-4,	-5),labels=c("AH-NF",	"AH-F",	"AH-H",	"AH-S",	"AH-DS",	"STOP",	"AS-DS",	"AS-S",	"AS-H",	"AS-F",	"AS-EF"))+ geom_hline(yintercept=0)+ theme(legend.position="none")+scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+ggtitle(paste("ETL vs Time","(from ", min_t, " to ",max_t,")" ))
 
 
 ggsave("ETLVsTime.png")   
