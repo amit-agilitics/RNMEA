@@ -18,7 +18,7 @@ library(devtools)
 library(dplyr)
 
 #setpath for directory where data is there and file will be generated
-setwd("E:/VDR Analaysis/In Progress/Maran Appolo/1.APPROACH OF QUANZHOU/Data")
+setwd("E:/VDR Analaysis/In Progress/Berge Aoraki/mainata")
 
 #read data from CSV file given in directory
 Data=read.csv("data.csv",header=FALSE)
@@ -65,7 +65,7 @@ ggplot(data=Mytable,aes(Time_,True_heading$class))+geom_line(color="Blue",aes(gr
 ggsave("TrueHeadingvsTime.png")
 
 #Relative WindSpeed vs time
-Mytable=sqldf('Select * from Data where V3 like "%MWV" and V5="R"')
+Mytable=sqldf('Select * from Data where V3 like "%MWV"')
 Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
 windspeed<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
 p2=ggplot(data=Mytable,aes(Time_,windspeed$class))+geom_line(color="blue",aes(group=10)) +theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 90))+ggtitle(paste("Relative WindSpeed vs Time for time between ",min_t,"-",max_t))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+scale_y_continuous(name ="Wind Speed (m/s)",limits=c(-35,35), breaks=seq(-35,35, by = 5))
@@ -77,9 +77,9 @@ ggsave("RelativeWindSpeedvsTime.png")
 #Speed Through Water
 Mytable=sqldf('Select * from Data where V3 like "%VBW%"')
 Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
-MySpeed<-transform(Mytable$V7,class=as.double(as.character(Mytable$V7)))
+MySpeed<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
 positive=MySpeed$class>0
-ggplot(data=Mytable,aes(Time_,MySpeed$class))+geom_line(color="Blue",aes(group=1))+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0))+ggtitle(paste("Ground Speed vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Ground Speed (Knots)",limits=c(-5,20), breaks=seq(-5,20, by = 1))+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))
+ggplot(data=Mytable,aes(Time_,MySpeed$class))+geom_line(color="Blue",aes(group=1))+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 1))+ggtitle(paste("Ground Speed vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Ground Speed (Knots)",limits=c(-5,20), breaks=seq(-5,20, by = 1))+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))
 ggsave("GroundSpeedvsTime.png")
 
 #Track Made good Vs time
@@ -116,9 +116,11 @@ write.csv(Mytable,"GPPGLL.CSV")
 
 #ggmap
 #Save GPGGA data
-Mytable=sqldf('Select  (floor(V5/100)+(V5/100- floor(V5/100))*100/60)*(case WHEN V6 ="S" THEN -1  WHEN V6 ="N" THEN 1 END)  latitude,
-   (floor(V7/100)+(V7/100- floor(V7/100))*100/60)*(case WHEN V8 ="W" THEN -1  WHEN V8 ="E" THEN 1 END) longitude   
+temptable=sqldf('Select  round((floor(V5/100)+(V5/100- floor(V5/100))*100/60)*(case WHEN V6 ="S" THEN -1  WHEN V6 ="N" THEN 1 END),3)  latitude,
+   round((floor(V7/100)+(V7/100- floor(V7/100))*100/60)*(case WHEN V8 ="W" THEN -1  WHEN V8 ="E" THEN 1 END),3) longitude   
            from Data where V3 like "%GGA"')
+
+Mytable=sqldf('Select * from temptable where longitude is not null and latitude is not null')
 
 write.csv(Mytable,"GPPGGA.CSV")
 
@@ -147,6 +149,12 @@ ETL<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
 Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
 positive<-ETL$class>=0
 
+grob1 <- grobTree(textGrob("Ahead", x=0.1,  y=0.95, hjust=0,
+                           gp=gpar(col="dark gREEN", fontsize=13, fontface="italic")))
+grob2 <- grobTree(textGrob("Astern", x=0.2,  y=.95, hjust=0,vjust = 25,
+                           gp=gpar(col="red", fontsize=13, fontface="italic")))
+
+
 ETL$series <- ifelse(ETL$class < 0, "Negative", "Positive")
 ggplot(ETL, aes(
   x = Time_,
@@ -174,7 +182,9 @@ ggplot(ETL, aes(
   breaks = date_breaks("60 min"),
   name = "Time in UTC"
 ) + ggtitle(paste("ETL vs Time", "(from ", min_t, " to ", max_t, ")")) + geom_bar(stat =
-                                                                                    "identity")
+                                                                                    "identity")+annotation_custom(grob1)+annotation_custom(grob2)
+
+
 
 
 ggsave("ETLVsTime.png")   
