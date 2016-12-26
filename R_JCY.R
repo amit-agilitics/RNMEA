@@ -18,7 +18,7 @@ library(devtools)
 library(dplyr)
 
 #setpath for directory where data is there and file will be generated
-setwd("E:/VDR Analaysis/In Progress/San Diego Bridge VDR/Data")
+setwd("E:/VDR Analaysis/In Progress/Maran Appolo/1.APPROACH OF QUANZHOU/Data")
 
 #read data from CSV file given in directory
 Data=read.csv("data.csv",header=FALSE)
@@ -77,9 +77,9 @@ ggsave("RelativeWindSpeedvsTime.png")
 #Speed Through Water
 Mytable=sqldf('Select * from Data where V3 like "%VBW%"')
 Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
-MySpeed<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+MySpeed<-transform(Mytable$V7,class=as.double(as.character(Mytable$V7)))
 positive=MySpeed$class>0
-ggplot(data=Mytable,aes(Time_,MySpeed$class))+geom_line(color="Blue",aes(group=1)) +theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0))+ggtitle(paste("Ground Speed vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Ground Speed (Knots)",limits=c(-5,20), breaks=seq(-5,20, by = 1))+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))
+ggplot(data=Mytable,aes(Time_,MySpeed$class))+geom_line(color="Blue",aes(group=1))+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0))+ggtitle(paste("Ground Speed vs Time","(from ", min_t, " to ",max_t,")" ))+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Ground Speed (Knots)",limits=c(-5,20), breaks=seq(-5,20, by = 1))+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))
 ggsave("GroundSpeedvsTime.png")
 
 #Track Made good Vs time
@@ -127,7 +127,7 @@ head_cord<-head(Mytable,1)
 tail_cord<-tail(Mytable,1)
 
 # getting the map
-mapamit <- get_map(location = c(lon = mean(Mytable$longitude), lat = mean(Mytable$latitude)), zoom = 5,
+mapamit <- get_map(location = c(lon = mean(Mytable$longitude), lat = mean(Mytable$latitude)), zoom = 6,
                    maptype = "terrain", scale = 1)
 
 ggmap(mapamit)+geom_point(data = Mytable, aes(x = Mytable$longitude, y = Mytable$latitude, fill = "green", alpha = 0.01), size = .05, shape = 21) +
@@ -148,9 +148,33 @@ Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
 positive<-ETL$class>=0
 
 ETL$series <- ifelse(ETL$class < 0, "Negative", "Positive")
-ggplot(ETL, aes(x = Time_, y = ETL$class, colour = series)) + 
-  geom_line() +
-  scale_colour_manual(values=c("BLUE", "Magenta"))+scale_y_continuous("Engine Telegraph",limits=c(-5,5), breaks=c(5,	4,	3,	2,	1,	0,	-1,	-2,	-3,	-4,	-5),labels=c("AH-NF",	"AH-F",	"AH-H",	"AH-S",	"AH-DS",	"STOP",	"AS-DS",	"AS-S",	"AS-H",	"AS-F",	"AS-EF"))+ geom_hline(yintercept=0)+ theme(legend.position="none")+scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+ggtitle(paste("ETL vs Time","(from ", min_t, " to ",max_t,")" ))
+ggplot(ETL, aes(
+  x = Time_,
+  y = ETL$class,
+  colour = series
+)) + scale_colour_manual(values = c("BLUE", "Magenta")) + scale_y_continuous(
+  "Engine Telegraph",
+  limits = c(-5, 5),
+  breaks = c(5,	4,	3,	2,	1,	0,-1,-2,-3,-4,-5),
+  labels = c(
+    "AH-NF",
+    "AH-F",
+    "AH-H",
+    "AH-S",
+    "AH-DS",
+    "STOP",
+    "AS-DS",
+    "AS-S",
+    "AS-H",
+    "AS-F",
+    "AS-EF"
+  )
+) + geom_hline(yintercept = 0) + theme(legend.position = "none") + scale_x_datetime(
+  labels = date_format("%H:%M"),
+  breaks = date_breaks("60 min"),
+  name = "Time in UTC"
+) + ggtitle(paste("ETL vs Time", "(from ", min_t, " to ", max_t, ")")) + geom_bar(stat =
+                                                                                    "identity")
 
 
 ggsave("ETLVsTime.png")   
