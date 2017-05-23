@@ -1,0 +1,445 @@
+#Call libraries required for graphs
+library(ggplot2)
+library(grid) 
+library(sqldf)
+library(gridExtra)
+library(grid)
+library(plotly)
+library(scales)
+library(celestial)
+library(ggrepel)
+library(ggmap)
+library(rworldmap)
+library(mapdata)
+library(maptools)
+library(gtable)
+library(mapproj)
+library(ggthemes)
+library(devtools)
+library(dplyr)
+library(gtable)
+library(scales)
+library(gridExtra)
+library(lubridate)
+
+#setpath for directory where data is there and file will be generate
+setwd("E:/VDR Analaysis/In Progress/ALEX/data2")
+
+#read data from CSV file given in directory
+Data=read.csv("data.csv",header=FALSE,sep=",",quote = "\"'")
+maxtime=sqldf('Select max(V1) from Data where V3 like "%GGA"')
+max_t<-format.Date(strptime(maxtime,"%Y/%m/%d %H:%M",tz="GMT"), "%d-%m-%Y %H:%M")
+mintime=sqldf('Select min(V1) from Data where V3 like "%GGA"')
+min_t<-format.Date(strptime(mintime,"%Y/%m/%d %H:%M",tz="GMT"), "%d-%m-%Y %H:%M")
+Newval<-paste(min_t,max_t,sep="  -  ")
+grob1 <- grobTree(textGrob("Starboard", x=0.05,  y=0.95, hjust=0,
+                           gp=gpar(col="dark gREEN", fontsize=13, fontface="italic")))
+grob2 <- grobTree(textGrob("Port", x=0.05,  y=.95, hjust=0,vjust = 25,
+                           gp=gpar(col="red", fontsize=13, fontface="italic")))
+grob3 <- grobTree(textGrob(Newval, x=0.05,  y=.95, hjust=-.5,vjust = 27,
+                           gp=gpar(col="black", fontsize=16, fontface="italic")))
+
+
+
+#Rudder Sensor Angle
+Mytable=sqldf('Select * from Data where V3 like "%RSA"')
+RSA=sqldf('Select * from Data where V3 like "%RSA"')
+
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+trunc(Time_,units = c("secs", "mins", "hours"))
+Rudder_Angle<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+positive=Rudder_Angle$class>0
+p<-ggplot(data=Mytable,aes(Time_,Rudder_Angle$class, fill=positive))+geom_bar(stat='identity', position = 'identity')+ scale_fill_manual(values=c("red", " dark green"))+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0),legend.position='none')+ggtitle("Rudder Angle vs Time")+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Rudder Angle (Degrees)", limits=c(min(Rudder_Angle$class),max(Rudder_Angle$class)  ), breaks=seq(-50,50, by = 10))
+p+   theme(plot.title = element_text(hjust = 0.5),
+           panel.background = element_rect(fill = "slategray1",
+                                           colour = "slategray1",
+                                           size = 0.5, linetype = "solid"),
+           panel.grid.major = element_line(size = 1, linetype = 1,
+                                           colour = "white"), 
+           panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                           colour = "white"),
+           panel.border= element_rect(color="black", fill=NA)
+)+annotation_custom(grob1)+annotation_custom(grob2)+
+  annotation_custom(grob3)+geom_hline(yintercept=0)
+ggsave("RudderAnglevstime.png")
+
+
+#Revolution per Minute
+
+grob1 <- grobTree(textGrob("Ahead", x=0.1,  y=0.95, hjust=0,
+                           gp=gpar(col="steelBlue4", fontsize=13, fontface="bold")))
+grob2 <- grobTree(textGrob("Astern", x=0.1,  y=.95, hjust=0,vjust = 31,
+                           gp=gpar(col="steelBlue1", fontsize=13, fontface="bold")))
+
+
+Mytable=sqldf('Select * from Data where V3 like "%RPM"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+trunc(Time_,units = c("secs", "mins", "hours"))
+RPM<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
+positive=RPM$class>0
+p<-ggplot(data=Mytable,aes(Time_,RPM$class,fill=positive))+geom_bar(stat = "identity", position = 'identity')+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0),legend.position='none')+ggtitle("Revolutions per minute" )+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Revolutions per minute", limits=c(-20,max(RPM$class)+20), breaks=seq(-20,ceiling(max(RPM$class))+20, by = 20))
+p+
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),
+        panel.border= element_rect(color="black", fill=NA)
+  )+geom_hline(yintercept=0)+annotation_custom(grob1)+annotation_custom(grob2)+annotation_custom(grob3)
+ggsave("RevolutionPerMinute.png")
+
+
+
+
+#Depth Under Kneel
+Mytable=sqldf('Select * from Data where V3 like "%DPT"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+DPT<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+  ggplot(data=Mytable,aes(Time_,DPT$class))+geom_line(color="dark green") +
+    theme(plot.title = element_text(hjust = 0.5),
+          panel.background = element_rect(fill = "slategray1",
+                                          colour = "slategray1",
+                                          size = 0.5, linetype = "solid"),
+          panel.grid.major = element_line(size = 1, linetype = 1,
+                                          colour = "white"), 
+          panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                          colour = "white"),
+          panel.border= element_rect(color="black", fill=NA)
+    )+annotation_custom(grob3)+ggtitle("UKC vs Time")+ 
+    scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+theme(panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+scale_y_continuous(name ="Under Kneel Clearance",limits=c(-0,40), breaks=seq(-0,40, by = 5))
+  ggsave("UKCvsTime.png")
+
+#True Heading
+Mytable=sqldf('Select * from Data where V3 like "%HDT"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+degree<-rep(0:360,2)
+HDT<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+TH<-ggplot(data=Mytable,aes(Time_,HDT$class))+geom_line(color="Blue",aes(group=1)) +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),
+        panel.border= element_rect(color="black", fill=NA)
+  )+ggtitle("True Heading vs Time")+scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+
+  theme(plot.title = element_text(hjust = 0.5),panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+
+  scale_y_continuous(name ="True Heading in Degree",limits=c(0,360), breaks=seq(0,360, by =30))+annotation_custom(grob3)
+TH+annotation_custom(grob3)
+ggsave("TrueHeadingvsTime.png")
+
+#Relative WindSpeed vs time
+  Mytable=sqldf('Select * from Data where V3 like "%MWV"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+windspeed<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
+winddirection<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+x.end <- Mytable$Time_ +10
+
+p2<-ggplot(data=Mytable,aes(Time_,windspeed$class))+geom_line(color="blue",aes(group=10)) +
+  theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0))+
+  ggtitle("Relative WindSpeed vs Time")+ 
+  scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+
+  theme(plot.title = element_text(hjust = 0.5),panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+
+  scale_y_continuous(name ="Wind Speed (m/s)",limits=c(min(windspeed$class),max(windspeed$class)))
+p2+ 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),panel.border= element_rect(color="black", fill=NA))+annotation_custom(grob3)
+ggsave("RelativeWindSpeedvsTime.png")
+
+             
+
+
+
+#Speed Through Water
+Mytable=sqldf('Select * from Data where V3 like "%VBW%"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+MySpeed<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+positive=MySpeed$class>0
+ggplot(data=Mytable,aes(Time_,MySpeed$class))+geom_point(size=1,aes(group=2,color=positive))+scale_color_manual( values = c("TRUE"="#00ba38", "FALSE"="BLUE"))+
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),
+        panel.border= element_rect(color="black", fill=NA)
+  )+ggtitle("Ground Speed vs Time")+ 
+  scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name = "Ground Speed (Knots)",breaks=seq(-7,20, by = 2) )+
+  theme(plot.title = element_text(hjust = 0.5),panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5),legend.position="none")+geom_hline(yintercept=0)+annotation_custom(grob3)
+ggsave("GroundSpeedvsTime.png")
+
+
+
+
+#Track Made good Vs time
+Mytable=sqldf('Select * from Data where V3 like "%VTG%"')
+write.csv(Mytable,"TRUEHEADING.CSV", row.names=FALSE)
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+VTG<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+ggplot(data=Mytable,aes(Time_,VTG$class))+geom_line(color="Blue",aes(group=1)) +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),
+        panel.border= element_rect(color="black", fill=NA)
+  )+ggtitle("Track made good vs Time")+ 
+  scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+
+  theme(plot.title = element_text(hjust = 0.5),panel.grid.minor = element_line(colour = "gray", linetype = "dotted",size=.5))+
+  scale_y_continuous(name ="Track made good (Degree) vs Time",limits=c(0,360), breaks=seq(0,360, by = 30))+annotation_custom(grob3)
+
+
+ggsave("TrackMadeGoodvsTime.png")
+
+
+
+
+#Save Rate of Turn data
+Mytable=sqldf('Select * from Data where V3 like "%ROT"')
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+ROT<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+positive=ROT$class>0
+p=ggplot(data=Mytable,aes(Time_,ROT$class, fill=positive,color=positive))+geom_line(size=1)+theme(axis.text.x = element_text(angle = 0),axis.text.y = element_text(angle = 0),legend.position='none')+ggtitle("Rate of Turn vs Time")+ scale_x_datetime(labels=date_format("%H:%M"),breaks=date_breaks("60 min"),name ="Time in UTC")+scale_y_continuous(name ="Rate of Turn (Degree/min)", limits=c(-30,30), breaks=seq(-30,30, by = 5))
+grob1 <- grobTree(textGrob("Starboard", x=0.1,  y=0.95, hjust=0,
+                           gp=gpar(col="Blue", fontsize=13, fontface="italic")))
+grob2 <- grobTree(textGrob("Port", x=0.1,  y=.95, hjust=0,vjust = 30,
+                           gp=gpar(col="red", fontsize=13, fontface="italic")))
+RT<-p+ 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.background = element_rect(fill = "slategray1",
+                                        colour = "slategray1",
+                                        size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 1,
+                                        colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                        colour = "white"),
+        panel.border= element_rect(color="black", fill=NA)
+  )+geom_hline(yintercept=0)
+RT+annotation_custom(grob3)
+ggsave("RateofTurn.png")
+
+
+#Save AIS data
+Mytable=sqldf('Select  * from Data where V3 like "%AI%"')
+write.csv(Mytable,"AIS.CSV", row.names=FALSE)
+
+#Save GPGLL data
+Mytable=sqldf('Select  floor(V4/100)+(V4/100- floor(V4/100))*100/60 latitude, floor(V6/100)+(V6/100- floor(V6/100))*100/60 longitude   from Data where V3 like "%GLL"')
+write.csv(Mytable,"GPPGLL.CSV")
+
+#ggmap
+#Save GPGGA data
+temptable=sqldf('Select  round((floor(V5/100)+(V5/100- floor(V5/100))*100/60)*(case WHEN V6 ="S" THEN -1  WHEN V6 ="N" THEN 1 END),3)  latitude,
+   round((floor(V7/100)+(V7/100- floor(V7/100))*100/60)*(case WHEN V8 ="W" THEN -1  WHEN V8 ="E" THEN 1 END),3) longitude   
+           from Data where V3 like "%GGA"')
+
+Mytable=sqldf('Select * from temptable where longitude is not null and latitude is not null')
+
+
+
+# getting the map
+mapamit <- get_map(location = c(lon = mean(Mytable$longitude), lat = mean(Mytable$latitude)), zoom =8
+                   ,
+                   , source="google", maptype = "terrain", scale = 1)
+head_cord<-head(Mytable,1)
+tail_cord<-tail(Mytable,1)
+
+ggmap(mapamit)+
+  geom_point(data = Mytable, aes(x = Mytable$longitude, y = Mytable$latitude, fill = "light green", alpha = 0.01), size = .05, shape = 21) +
+  guides(fill=FALSE, alpha=FALSE, size=FALSE)+geom_point(data = tail_cord, aes(x = tail_cord$longitude, y = tail_cord$latitude, fill = "green", alpha = 0.1), size = 3, shape = 21)+
+  guides(fill=FALSE, alpha=FALSE, size=FALSE)+geom_point(data = head_cord, aes(x = head_cord$longitude, y = head_cord$latitude, fill = "black", alpha = 0.1), size = 3, shape = 21) 
+
+ggsave("Map.png")
+
+#Save ETL data
+
+temptable = sqldf('Select V1,V6*(case WHEN V6>10 THEN -1  WHEN V6 <10 THEN 1 END) V6,V7,V8 from Data where V3 like "%ETL"')
+Mytable =sqldf('Select V1,(case WHEN V6< 0 THEN V6+10  WHEN V6 >=0 THEN V6 END) V6,V7,V8 from temptable')
+etldistinct=sqldf('Select distinct V6 from Mytable')
+
+ETL<-transform(Mytable$V6,class=as.double(as.character(Mytable$V6)))
+ETLSUB<-transform(Mytable$V7,class=as.double(as.character(Mytable$V7)))
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+positive<-ETL$class>=0
+
+grob1 <- grobTree(textGrob("Ahead", x=0.1,  y=0.95, hjust=0,
+                           gp=gpar(col="steelBlue4", fontsize=13, fontface="bold")))
+grob2 <- grobTree(textGrob("Astern", x=0.1,  y=.95, hjust=0,vjust = 31,
+                           gp=gpar(col="steelBlue1", fontsize=13, fontface="bold")))
+
+
+ETL$series <- ifelse(ETL$class < 0, "Negative", "Positive")
+ggplot(ETL, aes(
+  x = Time_,
+  y = ETL$class,
+  colour = series
+)) + scale_colour_manual(values = c("steelBlue1", "steelBlue4")) + scale_y_continuous(
+  "Engine Telegraph",
+  limits = c(-5, 5),
+  breaks = c(5,	4,	3,	2,	1,	0,-1,-2,-3,-4,-5),
+  labels = c(
+    "AH-NF",
+    "AH-F",
+    "AH-H",
+    "AH-S",
+    "AH-DS",
+    "STOP",
+    "AS-DS",
+    "AS-S",
+    "AS-H",
+    "AS-F",
+    "AS-EF"
+  )
+) + geom_hline(yintercept = 0) + theme(plot.title = element_text(hjust = 0.5),legend.position = "none") + scale_x_datetime(
+  labels = date_format("%H:%M"),
+  breaks = date_breaks("60 min"),
+  name = "Time in UTC"
+) + ggtitle("ETL vs Time")+
+  theme(plot.title = element_text(hjust = 0.5),
+    panel.background = element_rect(fill = "slategray1",
+                                    colour = "slategray1",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 1, linetype = 1,
+                                    colour = "white"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "white"),
+    panel.border= element_rect(color="black", fill=NA)
+  )+
+  annotation_custom(grob1)+
+  annotation_custom(grob2)+ annotation_custom(grob3)+
+  geom_col(size=1)
+ggsave("ETLVsTime.png")   
+
+#ETL SUB
+
+ggplot(ETLSUB, aes(
+  x = Time_,
+  y = ETLSUB$class
+)) + scale_y_reverse()+scale_y_continuous(
+  "Engine Sub Telegraph Status",
+  breaks = c(40,30,20),
+  labels = c(
+    "F/E",
+    "F/A", "S/B")
+) +geom_line(size=1.15) + scale_x_datetime(
+  labels = date_format("%H:%M"),
+  breaks = date_breaks("60 min"),
+  name = "Time in UTC"
+) + ggtitle("SUB Telegraph Status vs Time")+
+  theme(plot.title = element_text(hjust = 0.5),
+    panel.background = element_rect(fill = "lightblue",
+                                    colour = "lightblue",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 2,
+                                    colour = "white"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "white"))+annotation_custom(grob3)
+
+
+ggsave("SUB_ETLVsTime.png")   
+
+
+#Save Distinct values
+Mytable=sqldf('Select  distinct Substr(V3,4,3) V3 from Data')
+Final_Distinct=sqldf('select   
+                     CASE when V3 ="AAM" then "Waypoint Arrival Alarm"
+ when V3 ="ALM" then "Almanac data"
+                     when V3 ="APA" then "Auto Pilot A sentence"
+                     when V3 ="APB" then "Auto Pilot B sentence"
+                     when V3 ="BOD" then "Bearing Origin to Destination"
+                     when V3 ="BWC" then "Bearing using Great Circle route"
+                     when V3 ="DTM" then "Datum being used."
+                     when V3 ="GGA" then "Fix information"
+                     when V3 ="GLL" then "Lat/Lon data"
+                     when V3 ="GRS" then "GPS Range Residuals"
+                     when V3 ="GSA" then "Overall Satellite data"
+                     when V3 ="GST" then "GPS Pseudorange Noise Statistics"
+                     when V3 ="GSV" then "Detailed Satellite data"
+                     when V3 ="MSK" then "send control for a beacon receiver"
+                     when V3 ="MSS" then "Beacon receiver status information."
+                     when V3 ="RMA" then "recommended Loran data"
+                     when V3 ="RMB" then "recommended navigation data for gps"
+                     when V3 ="RMC" then "recommended minimum data for gps"
+                     when V3 ="RTE" then "route message"
+                     when V3 ="TRF" then "Transit Fix Data"
+                     when V3 ="STN" then "Multiple Data ID"
+                     when V3 ="VBW" then "dual Ground / Water Spped"
+                     when V3 ="VTG" then "Vector track an Speed over the Ground"
+                     when V3 ="WCV" then "Waypoint closure velocity (Velocity Made Good)"
+                     when V3 ="WPL" then "Waypoint Location information"
+                     when V3 ="XTC" then "cross track error"
+                     when V3 ="XTE" then "measured cross track error"
+                     when V3 ="ZTG" then "Zulu (UTC) time and time to go (to destination)"
+                     when V3 ="ZDA" then "Date and Time"
+                     when V3 ="WPL" then " Waypoint Location information"
+                     when V3 ="XTC" then " cross track error"
+                     when V3 ="XTE" then " measured cross track error"
+                     When V3="DBS" then " Depth Below Surface"
+                     When V3="DPT" then "Depth Below Transducer"
+                     When V3="GLL" then " Geographic Position "
+                     When V3="HDT" then "Heading True  Latitude/Longitude Data"
+                     When V3="VBW" then "Speed Through Water and Speed Over Ground"
+                     When V3="VTG" then "Track Made Good and Speed Over Ground"
+                     When V3="VBW" then "Speed Through Water and Speed Over Ground"
+                     When V3="VTG" then "Track Made Good and Speed Over Ground"
+                     When V3="ALR" then "Alarm"
+                                          END AS DATA_PRESENT from Mytable')
+
+Value_to_write=sqldf('select * from Final_Distinct where DATA_PRESENT is not null')
+
+write.csv(Value_to_write,"Data_Present in VDR.CSV",row.names=F)
+
+
+
+# extract gtable
+
+ggplot_build(RT)
+
+g2 <- ggplot_gtable(ggplot_build(TH))
+
+# overlap the panel of 2nd plot on that of 1st plot
+pp <- c(subset(g1$layout, name == "panel", se = t:r))
+g <- gtable_add_grob(g1, g2$grobs[[which(g2$layout$name == "panel")]], pp$t, 
+                     pp$l, pp$b, pp$l)
+
+# axis tweaks
+ia <- which(g2$layout$name == "axis-l")
+ga <- g2$grobs[[ia]]
+ax <- ga$children[[2]]
+ax$widths <- rev(ax$widths)
+ax$grobs <- rev(ax$grobs)
+ax$grobs[[1]]$x <- ax$grobs[[1]]$x - unit(1, "npc") + unit(0.15, "cm")
+g <- gtable_add_cols(g, g2$widths[g2$layout[ia, ]$l], length(g$widths) - 1)
+g <- gtable_add_grob(g, ax, pp$t, length(g$widths) - 1, pp$b)
+
+# draw it
+grid.draw(g)
+
+#Alaram Data
+
+Mytable=sqldf('Select * from Data where V3 like "%ALR"')
+write.csv(Mytable,"Alarm.csv",row.names=F)
+Time_<-strptime(Mytable$V1,"%Y/%m/%d %T",tz="GMT")
+trunc(Time_,units = c("secs", "mins", "hours"))
+Rudder_Angle<-transform(Mytable$V4,class=as.double(as.character(Mytable$V4)))
+
+
+
+
+
